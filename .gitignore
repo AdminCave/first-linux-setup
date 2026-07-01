@@ -1,0 +1,7 @@
+# lokale Overrides / Secrets nicht committen
+config.local.conf
+*.local
+
+# Logs / temporäre Dateien
+*.log
+*.bak.*
