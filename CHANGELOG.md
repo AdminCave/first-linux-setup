@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-01
+
+### Changed
+- CI: bump `actions/checkout` v4 → v5 in the release workflow (Node 20 deprecation).
+
 ## [0.1.0] - 2026-07-01
 
 ### Added
@@ -38,5 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   newline (tripping `set -e` at the summary `read`) and the final `[[ … ]] &&` line became
   the script's exit status. Both fixed and guarded by integration tests.
 
-[Unreleased]: https://github.com/AdminCave/first-linux-setup/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AdminCave/first-linux-setup/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/AdminCave/first-linux-setup/releases/tag/v0.1.1
 [0.1.0]: https://github.com/AdminCave/first-linux-setup/releases/tag/v0.1.0
