@@ -2,8 +2,8 @@
 # =============================================================================
 # AdminCave · first-linux-setup · Orchestrator
 # -----------------------------------------------------------------------------
-# Ablauf: libs laden -> Argumente -> Detection -> Config -> pre-Hooks
-#         -> Module der Reihe nach -> post-Hooks -> Zusammenfassung
+# Flow: load libs -> arguments -> detection -> config -> pre-hooks
+#         -> modules in order -> post-hooks -> summary
 # =============================================================================
 set -euo pipefail
 
@@ -29,12 +29,12 @@ usage() {
   cat <<EOF
 AdminCave first-linux-setup
 
-Verwendung: setup.sh [Optionen]
-  --dry-run            Nur anzeigen, was passieren würde (keine Änderungen)
-  -y, --yes            Unattended: keine Rückfragen (nutzt Config-Defaults)
-  --profile <name>     Profil erzwingen (statt Auto-Erkennung)
-  --config <pfad|url>  Admin-Config laden (Pfad oder http[s]-URL)
-  -h, --help           Diese Hilfe
+Usage: setup.sh [options]
+  --dry-run            Only show what would happen (no changes)
+  -y, --yes            Unattended: no prompts (uses config defaults)
+  --profile <name>     Force profile (instead of auto-detection)
+  --config <path|url>  Load admin config (path or http[s] URL)
+  -h, --help           This help
 
 ENV: FLS_CONFIG, FLS_CONFIG_USER, FLS_CONFIG_PASS, FLS_REPO, FLS_REF, FLS_YES
 EOF
@@ -49,7 +49,7 @@ while [[ $# -gt 0 ]]; do
     --config)       FLS_CONFIG="${2:-}"; shift ;;
     --config=*)     FLS_CONFIG="${1#*=}" ;;
     -h|--help)      usage; exit 0 ;;
-    *)              printf 'Unbekanntes Argument: %s\n' "$1" >&2 ;;
+    *)              printf 'Unknown argument: %s\n' "$1" >&2 ;;
   esac
   shift
 done
@@ -57,24 +57,24 @@ export DRY_RUN ASSUME_YES
 
 require_root
 log_init
-log_info "AdminCave first-linux-setup gestartet"
-[[ "$DRY_RUN" == true ]] && log_warn "DRY-RUN aktiv — es werden KEINE Änderungen vorgenommen."
+log_info "AdminCave first-linux-setup started"
+[[ "$DRY_RUN" == true ]] && log_warn "DRY-RUN active — NO changes will be made."
 
 # --- Detection -------------------------------------------------------------
 detect_all
 FLS_PROFILE="${FORCE_PROFILE:-$DETECTED_PROFILE}"
 export FLS_PROFILE
-log_info "Profil: $FLS_PROFILE (OS=$DETECTED_OS_ID $DETECTED_OS_VER, Desktop=$DETECTED_DESKTOP, Virt=$DETECTED_VIRT)"
+log_info "Profile: $FLS_PROFILE (OS=$DETECTED_OS_ID $DETECTED_OS_VER, Desktop=$DETECTED_DESKTOP, Virt=$DETECTED_VIRT)"
 [[ -n "${SENSITIVE_ROLES// }" ]] && \
-  log_warn "Sensible Rollen erkannt:${SENSITIVE_ROLES} — betroffene Module werden geschützt."
+  log_warn "Sensitive roles detected:${SENSITIVE_ROLES} — affected modules will be protected."
 
 # --- Config ----------------------------------------------------------------
 config_load "$FLS_PROFILE"
 
-# --- pre-Hooks -------------------------------------------------------------
+# --- pre-hooks -------------------------------------------------------------
 run_hooks "$FLS_DIR/hooks/pre.d"
 
-# --- Module ----------------------------------------------------------------
+# --- Modules ---------------------------------------------------------------
 MODULES=(
   10-update
   20-locale-keyboard
@@ -93,19 +93,19 @@ MODULES=(
 
 for m in "${MODULES[@]}"; do
   f="$FLS_DIR/modules/$m.sh"
-  [[ -f "$f" ]] || { log_warn "Modul fehlt: $m"; continue; }
-  log_step "Modul: $m"
+  [[ -f "$f" ]] || { log_warn "Module missing: $m"; continue; }
+  log_step "Module: $m"
   # shellcheck source=/dev/null
   source "$f"
   if declare -F module_run >/dev/null; then
-    ( module_run ) || log_warn "Modul $m abgebrochen (rc=$?)"
+    ( module_run ) || log_warn "Module $m aborted (rc=$?)"
     unset -f module_run
   fi
 done
 
-# --- post-Hooks ------------------------------------------------------------
+# --- post-hooks ------------------------------------------------------------
 run_hooks "$FLS_DIR/hooks/post.d"
 
 read -r _w _e < <(log_summary)
-log_info "Fertig — Profil=$FLS_PROFILE, Warnungen=$_w, Fehler=$_e. Log: $FLS_LOG"
-[[ "$DRY_RUN" == true ]] && log_warn "DRY-RUN: es wurden KEINE Änderungen vorgenommen."
+log_info "Done — profile=$FLS_PROFILE, warnings=$_w, errors=$_e. Log: $FLS_LOG"
+[[ "$DRY_RUN" == true ]] && log_warn "DRY-RUN: NO changes were made."

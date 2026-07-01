@@ -1,0 +1,43 @@
+name: release
+
+# A SemVer tag (vX.Y.Z) builds the release: toolkit tarball + bootstrap.sh +
+# SHA256SUMS as assets, marked as "latest" -> stable download URL.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        run: sudo apt-get update && sudo apt-get install -y bats shellcheck
+
+      - name: Static + unit tests (release gate)
+        run: bash tests/run.sh unit
+
+      - name: Build package
+        run: |
+          PKG="first-linux-setup"
+          mkdir -p dist "$PKG"
+          # only runtime files in the release package (no dev/CI files)
+          cp -a bootstrap.sh setup.sh lib modules profiles assets hooks \
+                config.conf README.md CHANGELOG.md "$PKG"/
+          tar -czf "dist/${PKG}.tar.gz" "$PKG"
+          cp bootstrap.sh dist/bootstrap.sh
+          ( cd dist && sha256sum "${PKG}.tar.gz" bootstrap.sh > SHA256SUMS )
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/first-linux-setup.tar.gz
+            dist/bootstrap.sh
+            dist/SHA256SUMS
+          generate_release_notes: true

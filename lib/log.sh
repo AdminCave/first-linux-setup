@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/log.sh — Logging (Datei + Konsole über lib/ui.sh)
+# lib/log.sh — Logging (file + console via lib/ui.sh)
 # shellcheck shell=bash
 
 FLS_LOG="${FLS_LOG:-/var/log/admincave-setup.log}"
@@ -9,7 +9,7 @@ log_init() {
     FLS_LOG="/tmp/admincave-setup.log"
     : >>"$FLS_LOG" 2>/dev/null || FLS_LOG="/dev/null"
   fi
-  _log INFO "===== Lauf gestartet ($(date '+%F %T')) ====="
+  _log INFO "===== Run started ($(date '+%F %T')) ====="
 }
 
 _log() {
@@ -22,12 +22,12 @@ log_warn()  { _log WARN  "$*"; ui_warn "$*"; }
 log_error() { _log ERROR "$*"; ui_err  "$*"; }
 log_step()  { _log STEP  "$*"; ui_step "$*"; }
 
-# log_summary — zählt WARN/ERROR seit dem letzten "Lauf gestartet"-Marker.
-# Gibt "<warn> <error>" aus (subshell-sicher, da aus dem Logfile gelesen).
+# log_summary — counts WARN/ERROR since the last "Run started" marker.
+# Prints "<warn> <error>" (subshell-safe, since read from the log file).
 log_summary() {
   [[ -r "$FLS_LOG" ]] || { echo "0 0"; return; }
   awk '
-    /===== Lauf gestartet/ { w=0; e=0 }
+    /===== Run started/ { w=0; e=0 }
     /\[WARN/  { w++ }
     /\[ERROR/ { e++ }
     END { printf "%d %d", w+0, e+0 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Beispiel-Hook (POST) — läuft NACH allen Modulen.
-# Aktivieren: Datei nach hooks/post.d/<NN>-name.sh kopieren (Endung .sh, ohne .example).
+# Example hook (POST) — runs AFTER all modules.
+# Activate: copy the file to hooks/post.d/<NN>-name.sh (suffix .sh, without .example).
 set -euo pipefail
 
-echo "[post-hook] Beispiel: hier eigene Nacharbeiten einfügen."
+echo "[post-hook] Example: insert your own follow-up work here."

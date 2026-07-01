@@ -1,36 +1,36 @@
 #!/usr/bin/env bash
-# Modul 85-proxmox-tuning — swappiness + ZFS-ARC (nur Proxmox-Profile)
+# Module 85-proxmox-tuning — swappiness + ZFS ARC (Proxmox profiles only)
 # shellcheck shell=bash
 module_run() {
   case "$FLS_PROFILE" in
     proxmox-ve|pbs) : ;;
-    *) log_info "85-proxmox-tuning: kein Proxmox-Profil — übersprungen."; return 0 ;;
+    *) log_info "85-proxmox-tuning: no Proxmox profile — skipped."; return 0 ;;
   esac
 
   # --- swappiness ---
   if [[ -n "${SWAPPINESS:-}" ]]; then
     printf '%s\n' "$FLS_MARKER" "vm.swappiness = ${SWAPPINESS}" \
       | write_file /etc/sysctl.d/99-admincave.conf 0644 root
-    run sysctl -w "vm.swappiness=${SWAPPINESS}"
+    fls_run sysctl -w "vm.swappiness=${SWAPPINESS}"
     log_info "85-proxmox-tuning: vm.swappiness=${SWAPPINESS}"
   fi
 
-  # --- ZFS ARC (nur wenn ZFS im Einsatz) ---
+  # --- ZFS ARC (only if ZFS is in use) ---
   if ! have zpool && ! modinfo zfs >/dev/null 2>&1; then
-    log_info "85-proxmox-tuning: kein ZFS erkannt — ARC-Tuning übersprungen."
+    log_info "85-proxmox-tuning: no ZFS detected — ARC tuning skipped."
     return 0
   fi
 
   local arc_min="${ZFS_ARC_MIN:-}" arc_max="${ZFS_ARC_MAX:-}"
   if [[ "${ZFS_ARC_PROMPT:-true}" == true && "${ASSUME_YES:-false}" != true && "${DRY_RUN:-false}" != true ]]; then
     local total_gib; total_gib="$(awk '/MemTotal/{printf "%.0f", $2/1024/1024}' /proc/meminfo 2>/dev/null)"
-    ui_say "ZFS-ARC-Tuning (RAM gesamt: ${total_gib:-?} GiB). Leer lassen = nicht ändern."
-    arc_min="$(prompt_value 'ZFS ARC min (z.B. 2G)' "$arc_min")"
-    arc_max="$(prompt_value 'ZFS ARC max (z.B. 8G)' "$arc_max")"
+    ui_say "ZFS ARC tuning (total RAM: ${total_gib:-?} GiB). Leave empty = do not change."
+    arc_min="$(prompt_value 'ZFS ARC min (e.g. 2G)' "$arc_min")"
+    arc_max="$(prompt_value 'ZFS ARC max (e.g. 8G)' "$arc_max")"
   fi
 
   if [[ -z "$arc_min" && -z "$arc_max" ]]; then
-    log_info "85-proxmox-tuning: keine ARC-Werte angegeben — übersprungen."
+    log_info "85-proxmox-tuning: no ARC values provided — skipped."
     return 0
   fi
 
@@ -42,7 +42,7 @@ module_run() {
   printf '%s\n' "$FLS_MARKER" "$line" | write_file /etc/modprobe.d/zfs.conf 0644 root
   log_info "85-proxmox-tuning: $line"
 
-  # PFLICHT nach modprobe.d-Änderung:
-  run update-initramfs -u -k all
-  log_warn "85-proxmox-tuning: ARC-Limit greift nach Reboot."
+  # MANDATORY after a modprobe.d change:
+  fls_run update-initramfs -u -k all
+  log_warn "85-proxmox-tuning: ARC limit takes effect after reboot."
 }

@@ -2,50 +2,75 @@
 # =============================================================================
 # AdminCave · first-linux-setup · bootstrap
 # -----------------------------------------------------------------------------
-# Wird vom One-Liner geholt, lädt das Toolkit herunter und startet setup.sh.
+# Fetched by the one-liner, downloads the toolkit and starts setup.sh.
 #
+# Stable (recommended):
 #   bash -c "$(curl -fsSL \
-#     https://raw.githubusercontent.com/AdminCave/first-linux-setup/main/bootstrap.sh)"
+#     https://github.com/AdminCave/first-linux-setup/releases/latest/download/bootstrap.sh)"
 #
-# Parameter (als ENV vorangestellt):
-#   FLS_REPO        Repo (Default: AdminCave/first-linux-setup) — für Forks
-#   FLS_REF         Branch/Tag (Default: main)
-#   FLS_WORKDIR     Zielverzeichnis (Default: /opt/first-linux-setup)
-#   FLS_CONFIG      Pfad ODER URL zur Admin-Config (an setup.sh durchgereicht)
-#   FLS_CONFIG_USER / FLS_CONFIG_PASS   Basic-Auth für FLS_CONFIG-URL
-#   FLS_YES=true    Unattended (keine Rückfragen)
+# Source selection via FLS_VERSION:
+#   stable   (default) latest published release           -> releases/latest
+#   vX.Y.Z            exactly this release                 -> releases/download/vX.Y.Z
+#   dev              current Git branch (FLS_REF, default main)
+#
+# Further parameters (prepended as ENV):
+#   FLS_REPO        Repo (default: AdminCave/first-linux-setup) — for forks
+#   FLS_REF         Git branch/tag (implies dev mode)
+#   FLS_WORKDIR     Target directory (default: /opt/first-linux-setup)
+#   FLS_CONFIG / FLS_CONFIG_USER / FLS_CONFIG_PASS   passed through to setup.sh
+#   FLS_YES=true    Unattended (no prompts)
 # =============================================================================
 set -euo pipefail
 
 FLS_REPO="${FLS_REPO:-AdminCave/first-linux-setup}"
-FLS_REF="${FLS_REF:-main}"
+FLS_VERSION="${FLS_VERSION:-stable}"
+FLS_REF="${FLS_REF:-}"
 FLS_WORKDIR="${FLS_WORKDIR:-/opt/first-linux-setup}"
+PKG="first-linux-setup"
 
 err() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-[[ "$(id -u)" -eq 0 ]] || err "Bitte als root ausführen (sudo -i)."
-command -v tar >/dev/null 2>&1 || err "'tar' wird benötigt."
+[[ "$(id -u)" -eq 0 ]] || err "Please run as root (sudo -i)."
+command -v tar >/dev/null 2>&1 || err "'tar' is required."
 command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 \
-  || err "'curl' oder 'wget' wird benötigt."
+  || err "'curl' or 'wget' is required."
 
-tarball="https://codeload.github.com/${FLS_REPO}/tar.gz/${FLS_REF}"
+# --- Determine download source ---
+if [[ -n "$FLS_REF" || "$FLS_VERSION" == dev ]]; then
+  ref="${FLS_REF:-main}"
+  url="https://codeload.github.com/${FLS_REPO}/tar.gz/${ref}"
+  printf '>> Source: git-ref %s (development)\n' "$ref"
+elif [[ "$FLS_VERSION" == stable ]]; then
+  url="https://github.com/${FLS_REPO}/releases/latest/download/${PKG}.tar.gz"
+  printf '>> Source: latest stable release\n'
+else
+  url="https://github.com/${FLS_REPO}/releases/download/${FLS_VERSION}/${PKG}.tar.gz"
+  printf '>> Source: release %s\n' "$FLS_VERSION"
+fi
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-printf '>> Lade %s@%s ...\n' "$FLS_REPO" "$FLS_REF"
+printf '>> Downloading %s ...\n' "$url"
 if command -v curl >/dev/null 2>&1; then
-  curl -fsSL "$tarball" -o "$tmp/src.tar.gz" || err "Download fehlgeschlagen: $tarball"
+  curl -fsSL "$url" -o "$tmp/src.tar.gz" || err "Download failed: $url"
 else
-  wget -qO "$tmp/src.tar.gz" "$tarball" || err "Download fehlgeschlagen: $tarball"
+  wget -qO "$tmp/src.tar.gz" "$url" || err "Download failed: $url"
 fi
 
 tar -xzf "$tmp/src.tar.gz" -C "$tmp"
-srcdir="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n1)"
-[[ -d "$srcdir" ]] || err "Entpacktes Quellverzeichnis nicht gefunden."
+
+# Robustly resolve tarball layout (release: PKG/…, codeload: repo-ref/…)
+if [[ -f "$tmp/setup.sh" ]]; then
+  srcdir="$tmp"
+else
+  srcdir="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n1)"
+fi
+[[ -f "$srcdir/setup.sh" ]] || err "setup.sh not found in the downloaded package."
 
 mkdir -p "$FLS_WORKDIR"
 cp -a "$srcdir/." "$FLS_WORKDIR/"
 chmod +x "$FLS_WORKDIR/setup.sh" 2>/dev/null || true
 
-printf '>> Starte Setup ...\n'
+printf '>> Starting setup ...\n'
 exec bash "$FLS_WORKDIR/setup.sh" "$@"

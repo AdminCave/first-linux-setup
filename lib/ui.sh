@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lib/ui.sh — Konsolenausgabe (Farben nur bei TTY) + Prompts
+# lib/ui.sh — Console output (colors only on TTY) + prompts
 # shellcheck shell=bash
 
 if [[ -t 1 && "${TERM:-dumb}" != "dumb" ]]; then
@@ -15,8 +15,8 @@ ui_ok()   { printf '%s[ok]%s %s\n' "$C_GRN" "$C_RESET" "$*"; }
 ui_warn() { printf '%s[!]%s %s\n'  "$C_YEL" "$C_RESET" "$*" >&2; }
 ui_err()  { printf '%s[x]%s %s\n'  "$C_RED" "$C_RESET" "$*" >&2; }
 
-# ask_yes_no <frage> [default:y|n]  -> 0=ja, 1=nein
-# Unattended (ASSUME_YES=true) liefert den Default zurück, ohne zu fragen.
+# ask_yes_no <question> [default:y|n]  -> 0=yes, 1=no
+# Unattended (ASSUME_YES=true) returns the default without asking.
 ask_yes_no() {
   local q="$1" def="${2:-n}" ans
   if [[ "${ASSUME_YES:-false}" == true ]]; then
@@ -29,7 +29,7 @@ ask_yes_no() {
   [[ "$ans" =~ ^[JjYy]$ ]]
 }
 
-# prompt_value <frage> <default> -> echo Wert
+# prompt_value <question> <default> -> echo value
 prompt_value() {
   local q="$1" def="${2:-}" ans
   if [[ "${ASSUME_YES:-false}" == true ]]; then printf '%s' "$def"; return; fi

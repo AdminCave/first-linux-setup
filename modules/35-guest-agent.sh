@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Modul 35-guest-agent — Gast-Agent in VMs
-# Proxmox/KVM-Gast -> qemu-guest-agent. Bare-Metal & Container: nichts.
-# Hinweis: Der Agent braucht einen host-seitig aktivierten virtio-Kanal
-# (Proxmox: qm set <VMID> --agent enabled=1), sonst startet der Dienst nicht.
+# Module 35-guest-agent — Guest agent in VMs
+# Proxmox/KVM guest -> qemu-guest-agent. Bare-metal & containers: nothing.
+# Note: the agent needs a virtio channel enabled on the host side
+# (Proxmox: qm set <VMID> --agent enabled=1), otherwise the service won't start.
 # shellcheck shell=bash
 module_run() {
   local mode="${GUEST_AGENT_INSTALL:-auto}"
-  [[ "$mode" == false ]] && { log_info "35-guest-agent: deaktiviert."; return 0; }
+  [[ "$mode" == false ]] && { log_info "35-guest-agent: disabled."; return 0; }
 
-  # Nur in echten VMs (kein Bare-Metal, kein Container)
+  # Only in real VMs (no bare-metal, no container)
   if is_bare_metal || [[ "${DETECTED_CONTAINER:-no}" == yes ]]; then
-    log_info "35-guest-agent: keine VM (virt=${DETECTED_VIRT}, container=${DETECTED_CONTAINER}) — übersprungen."
+    log_info "35-guest-agent: not a VM (virt=${DETECTED_VIRT}, container=${DETECTED_CONTAINER}) — skipped."
     return 0
   fi
 
@@ -18,22 +18,22 @@ module_run() {
   case "$DETECTED_VIRT" in
     kvm|qemu)
       if pkg_installed qemu-guest-agent; then
-        log_info "35-guest-agent: qemu-guest-agent bereits installiert."
+        log_info "35-guest-agent: qemu-guest-agent already installed."
       else
-        log_info "35-guest-agent: installiere qemu-guest-agent (virt=$DETECTED_VIRT)"
-        run apt-get -y install qemu-guest-agent || { log_warn "35-guest-agent: Installation fehlgeschlagen."; return 1; }
+        log_info "35-guest-agent: installing qemu-guest-agent (virt=$DETECTED_VIRT)"
+        fls_run apt-get -y install qemu-guest-agent || { log_warn "35-guest-agent: installation failed."; return 1; }
       fi
-      run systemctl enable qemu-guest-agent
+      fls_run systemctl enable qemu-guest-agent
       if [[ "${DRY_RUN:-false}" == true ]]; then
-        ui_say "  ${C_YEL}[dry-run]${C_RESET} würde qemu-guest-agent starten"
+        ui_say "  ${C_YEL}[dry-run]${C_RESET} would start qemu-guest-agent"
       else
         systemctl start qemu-guest-agent 2>/dev/null \
-          || log_warn "35-guest-agent: Dienst nicht gestartet — vermutlich fehlt der virtio-Kanal (Proxmox: 'qm set <VMID> --agent enabled=1')."
+          || log_warn "35-guest-agent: service not started — the virtio channel is probably missing (Proxmox: 'qm set <VMID> --agent enabled=1')."
       fi
-      log_info "35-guest-agent: qemu-guest-agent eingerichtet."
+      log_info "35-guest-agent: qemu-guest-agent configured."
       ;;
     *)
-      log_info "35-guest-agent: VM-Typ '$DETECTED_VIRT' — kein Agent-Mapping hinterlegt, übersprungen."
+      log_info "35-guest-agent: VM type '$DETECTED_VIRT' — no agent mapping defined, skipped."
       ;;
   esac
 }

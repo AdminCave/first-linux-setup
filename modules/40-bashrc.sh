@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Modul 40-bashrc — bashrc-Template ausrollen (root + /etc/skel + alle Login-User)
+# Module 40-bashrc — Deploy bashrc template (root + /etc/skel + all login users)
 # shellcheck shell=bash
 module_run() {
-  [[ "${DEPLOY_BASHRC:-false}" == true ]] || { log_info "40-bashrc: deaktiviert."; return 0; }
+  [[ "${DEPLOY_BASHRC:-false}" == true ]] || { log_info "40-bashrc: disabled."; return 0; }
   local tpl="$FLS_DIR/assets/bashrc.template"
-  [[ -r "$tpl" ]] || { log_error "40-bashrc: Template fehlt: $tpl"; return 1; }
+  [[ -r "$tpl" ]] || { log_error "40-bashrc: template missing: $tpl"; return 1; }
 
-  # Zielmenge: "owner:home"
+  # Target set: "owner:home"
   local targets=("root:/root" "root:/etc/skel")
   if [[ "${BASHRC_ALL_USERS:-true}" == true ]]; then
     local line
@@ -18,11 +18,11 @@ module_run() {
   local entry owner home dest
   for entry in "${targets[@]}"; do
     owner="${entry%%:*}"; home="${entry##*:}"
-    [[ -d "$home" ]] || { run install -d -m 0755 "$home"; }
+    [[ -d "$home" ]] || { fls_run install -d -m 0755 "$home"; }
     dest="$home/.bashrc"
-    # Idempotenz: bereits identisch -> nichts tun
+    # Idempotency: already identical -> do nothing
     if cmp -s "$tpl" "$dest" 2>/dev/null; then
-      log_info "40-bashrc: $dest bereits aktuell — übersprungen."
+      log_info "40-bashrc: $dest already up to date — skipped."
       continue
     fi
     [[ "${BASHRC_BACKUP:-true}" == true ]] && backup_file "$dest"

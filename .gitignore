@@ -1,7 +1,34 @@
-# lokale Overrides / Secrets nicht committen
+# --- Lokale Secrets / Overrides ---
 config.local.conf
 *.local
+.env
+.netrc
+*.secret
+*.key
 
-# Logs / temporäre Dateien
+# --- Laufzeit-Artefakte ---
 *.log
+*.bak
 *.bak.*
+
+# --- Release-/Build-Artefakte ---
+/dist/
+/build/
+*.tar.gz
+*.tgz
+SHA256SUMS
+
+# --- Claude Code (lokal, nicht teilen) ---
+.claude/settings.local.json
+.claude/agent-memory/
+
+# --- Editor / IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db

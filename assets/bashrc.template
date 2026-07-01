@@ -1,7 +1,7 @@
 # ~/.bashrc: executed by bash(1) for non-login shells.
 # Managed by AdminCave first-linux-setup
 
-# Nur für interaktive Shells
+# Only for interactive shells
 case $- in
   *i*) ;;
     *) return;;
@@ -18,19 +18,19 @@ HISTTIMEFORMAT="%F %T "
 shopt -s histappend
 shopt -s cmdhist
 
-# History zwischen mehreren offenen Shells synchron halten
+# Keep history synchronized across multiple open shells
 PROMPT_COMMAND='history -a; history -n; __set_prompt'
 
 # -----------------------------------------------------------------------------
-# Shell-Verhalten
+# Shell behavior
 # -----------------------------------------------------------------------------
 shopt -s checkwinsize
 
-# Lange Pfade in der Prompt kürzen, z. B. ~/a/b/c/d -> .../b/c/d
+# Shorten long paths in the prompt, e.g. ~/a/b/c/d -> .../b/c/d
 PROMPT_DIRTRIM=3
 
 # -----------------------------------------------------------------------------
-# Farben / ls / less
+# Colors / ls / less
 # -----------------------------------------------------------------------------
 force_color_prompt=yes
 
@@ -45,7 +45,7 @@ if [ -x /usr/bin/lesspipe ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# Aliase
+# Aliases
 # -----------------------------------------------------------------------------
 alias ls='ls $LS_OPTIONS'
 alias ll='ls $LS_OPTIONS -alh'
@@ -65,15 +65,15 @@ alias du='du -h'
 alias free='free -h'
 alias mkdir='mkdir -pv'
 
-# Interaktiv/sicher
+# Interactive/safe
 alias cp='cp -i'
 alias mv='mv -i'
 alias rm='rm -i'
 
-# Schnell neu laden
+# Quick reload
 alias reload='source ~/.bashrc'
 
-# Dein vorhandener Alias
+# Your existing alias
 alias nupdate='bash -c "$(wget -O - https://git.nevondo.com/Nevondo/server-tools/raw/master/maintenance/run.sh)"'
 
 # -----------------------------------------------------------------------------
@@ -92,16 +92,16 @@ if ! shopt -oq posix; then
   fi
 fi
 
-# Completion etwas angenehmer
+# Make completion a bit nicer
 #bind 'set completion-ignore-case on'
 #bind 'set show-all-if-ambiguous on'
 #bind 'TAB:menu-complete'
 
 # -----------------------------------------------------------------------------
-# Hilfsfunktionen
+# Helper functions
 # -----------------------------------------------------------------------------
 
-# Archive bequem entpacken
+# Conveniently extract archives
 extract() {
   if [ -f "$1" ]; then
     case "$1" in
@@ -116,19 +116,19 @@ extract() {
       *.zip)       unzip "$1" ;;
       *.rar)       unrar x "$1" ;;
       *.7z)        7z x "$1" ;;
-      *)           echo "Kann '$1' nicht entpacken." ;;
+      *)           echo "Cannot extract '$1'." ;;
     esac
   else
-    echo "'$1' ist keine gültige Datei."
+    echo "'$1' is not a valid file."
   fi
 }
 
-# Ordner erstellen und direkt hinein wechseln
+# Create a directory and change directly into it
 mkcd() {
   mkdir -p -- "$1" && cd -- "$1"
 }
 
-# Git-Branch anzeigen, falls im Git-Repo
+# Show git branch if inside a git repo
 parse_git_branch() {
   command -v git >/dev/null 2>&1 || return
   git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
@@ -138,7 +138,7 @@ parse_git_branch() {
 }
 
 # -----------------------------------------------------------------------------
-# Schöne Prompt mit Uhrzeit, Git-Branch, Exit-Status und Root-Farbwechsel
+# Nice prompt with time, git branch, exit status and root color change
 # -----------------------------------------------------------------------------
 __set_prompt() {
   local last_exit="$?"
@@ -154,7 +154,7 @@ __set_prompt() {
   local userhost_color="$green"
   local arrow_color="$blue"
 
-  # Root hervorheben
+  # Highlight root
   if [ "$EUID" -eq 0 ]; then
     userhost_color="$red"
     arrow_color="$red"
@@ -178,10 +178,10 @@ __set_prompt() {
   PS1+="${status_part}${arrow_color}└─➜${reset} "
 }
 
-# Initial setzen
+# Set initially
 __set_prompt
 
-# Fastfetch beim Login anzeigen
+# Show fastfetch on login
 if command -v fastfetch >/dev/null 2>&1; then
   fastfetch
 fi

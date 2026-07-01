@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
-# Modul 80-proxmox-repos — Enterprise -> No-Subscription (PVE, Ceph, PBS)
+# Module 80-proxmox-repos — Enterprise -> No-Subscription (PVE, Ceph, PBS)
 # deb822 .sources (PVE9/PBS4). Keyring: /usr/share/keyrings/proxmox-archive-keyring.gpg
 # shellcheck shell=bash
 
 _pmx_keyring="/usr/share/keyrings/proxmox-archive-keyring.gpg"
 
-# _deb822_disable <datei> — setzt/ergänzt "Enabled: no" (Datei bleibt erhalten)
+# _deb822_disable <file> — sets/adds "Enabled: no" (file is kept)
 _deb822_disable() {
   local f="$1"
-  [[ -f "$f" ]] || { log_info "80-proxmox-repos: $f nicht vorhanden — nichts zu deaktivieren."; return 0; }
+  [[ -f "$f" ]] || { log_info "80-proxmox-repos: $f not present — nothing to disable."; return 0; }
   backup_file "$f"
   if grep -qiE '^\s*Enabled:' "$f"; then
-    run sed -i -E 's/^\s*Enabled:.*/Enabled: no/I' "$f"
+    fls_run sed -i -E 's/^\s*Enabled:.*/Enabled: no/I' "$f"
   else
     if [[ "${DRY_RUN:-false}" == true ]]; then
-      ui_say "  ${C_YEL}[dry-run]${C_RESET} würde 'Enabled: no' an $f anhängen"
+      ui_say "  ${C_YEL}[dry-run]${C_RESET} would append 'Enabled: no' to $f"
     else
       printf 'Enabled: no\n' >>"$f"
     fi
   fi
-  log_info "80-proxmox-repos: $f deaktiviert (Enabled: no)."
+  log_info "80-proxmox-repos: $f disabled (Enabled: no)."
 }
 
 module_run() {
   case "$FLS_PROFILE" in
     proxmox-ve|pbs) : ;;
-    *) log_info "80-proxmox-repos: kein Proxmox-Profil — übersprungen."; return 0 ;;
+    *) log_info "80-proxmox-repos: no Proxmox profile — skipped."; return 0 ;;
   esac
   local ld="/etc/apt/sources.list.d"
 
@@ -40,10 +40,10 @@ module_run() {
         echo "Components: pve-no-subscription"
         echo "Signed-By: $_pmx_keyring"
       } | write_file "$ld/pve-no-subscription.sources" 0644 root
-      log_info "80-proxmox-repos: PVE No-Subscription gesetzt."
+      log_info "80-proxmox-repos: PVE No-Subscription set."
     fi
 
-    # --- Ceph: Release-Codename AUSLESEN, nicht raten ---
+    # --- Ceph: READ the release codename, don't guess ---
     if [[ "${PVE_DISABLE_CEPH_ENTERPRISE:-false}" == true || "${PVE_SWITCH_CEPH_NOSUB:-false}" == true ]]; then
       local ceph_f="$ld/ceph.sources" ceph_rel=""
       if [[ -f "$ceph_f" ]]; then
@@ -60,16 +60,16 @@ module_run() {
             echo "Components: no-subscription"
             echo "Signed-By: $_pmx_keyring"
           } | write_file "$ld/ceph-no-subscription.sources" 0644 root
-          log_info "80-proxmox-repos: Ceph No-Subscription gesetzt ($ceph_rel)."
+          log_info "80-proxmox-repos: Ceph No-Subscription set ($ceph_rel)."
         else
-          log_warn "80-proxmox-repos: Ceph-Release nicht ermittelbar (keine ceph.sources) — Ceph No-Sub übersprungen."
+          log_warn "80-proxmox-repos: Ceph release not determinable (no ceph.sources) — Ceph No-Sub skipped."
         fi
       fi
     fi
 
-    # optional: Subscription-Nag (patcht proxmoxlib.js, wird bei Updates überschrieben)
+    # optional: subscription nag (patches proxmoxlib.js, overwritten on updates)
     if [[ "${PVE_REMOVE_SUB_NAG:-false}" == true ]]; then
-      log_warn "80-proxmox-repos: PVE_REMOVE_SUB_NAG=true — TODO JS-Patch (bewusst optional, update-flüchtig)."
+      log_warn "80-proxmox-repos: PVE_REMOVE_SUB_NAG=true — TODO JS patch (deliberately optional, update-volatile)."
     fi
   fi
 
@@ -84,9 +84,9 @@ module_run() {
         echo "Components: pbs-no-subscription"
         echo "Signed-By: $_pmx_keyring"
       } | write_file "$ld/pbs-no-subscription.sources" 0644 root
-      log_info "80-proxmox-repos: PBS No-Subscription gesetzt."
+      log_info "80-proxmox-repos: PBS No-Subscription set."
     fi
   fi
 
-  run apt-get update
+  fls_run apt-get update
 }

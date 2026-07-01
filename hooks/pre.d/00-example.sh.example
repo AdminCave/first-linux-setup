@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Beispiel-Hook (PRE) — läuft VOR allen Modulen.
-# Aktivieren: Datei nach hooks/pre.d/<NN>-name.sh kopieren (Endung .sh, ohne .example).
-# Reihenfolge = alphabetisch über den NN-Prefix.
+# Example hook (PRE) — runs BEFORE all modules.
+# Activate: copy the file to hooks/pre.d/<NN>-name.sh (suffix .sh, without .example).
+# Order = alphabetical by the NN prefix.
 #
-# Diese Hooks werden via `bash <datei>` ausgeführt; sie laufen mit Root-Rechten.
+# These hooks are executed via `bash <file>`; they run with root privileges.
 set -euo pipefail
 
-echo "[pre-hook] Beispiel: hier eigene Vorbereitungen einfügen."
+echo "[pre-hook] Example: insert your own preparations here."

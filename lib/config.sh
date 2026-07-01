@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# lib/config.sh — Config-Schichten laden
-# Reihenfolge (spätere überschreiben frühere):
-#   profiles/defaults.conf -> profiles/<profil>.conf -> config.conf
-#   -> FLS_CONFIG (Pfad ODER http[s]-URL) -> ENV (bereits gesetzt)
+# lib/config.sh — Load config layers
+# Order (later ones override earlier ones):
+#   profiles/defaults.conf -> profiles/<profile>.conf -> config.conf
+#   -> FLS_CONFIG (path OR http[s] URL) -> ENV (already set)
 # shellcheck shell=bash
 
 _source_conf() {
@@ -22,7 +22,7 @@ config_load() {
   return 0
 }
 
-# Lädt Config von lokalem Pfad oder URL (optional Basic-Auth via netrc-Tempfile)
+# Loads config from a local path or URL (optional basic auth via netrc tempfile)
 _load_external_config() {
   local src="$1"
   if [[ "$src" != http://* && "$src" != https://* ]]; then
@@ -30,19 +30,19 @@ _load_external_config() {
     return
   fi
 
-  have curl || { log_error "curl wird für FLS_CONFIG-URL benötigt."; return 1; }
+  have curl || { log_error "curl is required for FLS_CONFIG URL."; return 1; }
   local tmp netrc="" host
   tmp="$(mktemp)"
 
   if [[ -n "${FLS_CONFIG_USER:-}" ]]; then
-    # Passwort NICHT via -u (wäre in 'ps' sichtbar) -> temporäres netrc, chmod 600
+    # Do NOT pass the password via -u (would be visible in 'ps') -> temporary netrc, chmod 600
     netrc="$(mktemp)"; chmod 600 "$netrc"
     host="${src#*://}"; host="${host%%/*}"
     printf 'machine %s login %s password %s\n' \
       "$host" "$FLS_CONFIG_USER" "${FLS_CONFIG_PASS:-}" >"$netrc"
   fi
 
-  log_info "Lade externe Config: $src"
+  log_info "Loading external config: $src"
   local ok=true
   if [[ -n "$netrc" ]]; then
     curl -fsSL --netrc-file "$netrc" "$src" -o "$tmp" || ok=false
@@ -54,9 +54,9 @@ _load_external_config() {
   if [[ "$ok" == true ]]; then
     # shellcheck disable=SC1090
     . "$tmp"
-    log_info "Externe Config geladen."
+    log_info "External config loaded."
   else
-    log_error "Download der externen Config fehlgeschlagen: $src"
+    log_error "Download of external config failed: $src"
   fi
   rm -f "$tmp"
 }

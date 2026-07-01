@@ -1,181 +1,190 @@
 # first-linux-setup
 
-Teil von **[AdminCave](https://github.com/AdminCave)** — Tools, die Admins das Leben leichter machen.
+Part of **[AdminCave](https://github.com/AdminCave)** — tooling that makes admins' lives easier.
 
-`first-linux-setup` ist ein **One-Liner-Grundsetup** für frische Linux-Server und -Clients.
-Es **erkennt die Umgebung automatisch**, wendet ein passendes Profil an und richtet die
-üblichen Erst-Einstellungen ein (bashrc, SSH, Pakete, Härtung, Proxmox-Repos …).
-Das Tool ist **forkbar** und über eine Bash-Config sowie eigene **Hook-Skripte** anpassbar.
+`first-linux-setup` is a **one-liner base setup** for fresh Linux servers and clients.
+It **auto-detects the environment**, applies a matching profile, and performs the usual
+first-time configuration (bashrc, SSH, packages, hardening, Proxmox repos …). The tool is
+**forkable** and configurable via a Bash config plus your own **hook scripts**.
 
-> ⚠️ **Status:** In aktiver Entwicklung. Framework + alle Module sind implementiert und per
-> Dry-Run getestet, aber **noch nicht auf allen echten Zielsystemen** (PVE/PBS/Ubuntu) verifiziert.
-> Erste Läufe bitte immer mit `--dry-run`.
-
----
-
-## Inhalt
-
-- [Unterstützte Systeme](#unterstützte-systeme)
-- [Schnellstart](#schnellstart-one-liner)
-- [Parameter & CLI-Optionen](#parameter--cli-optionen)
-- [Wie die Erkennung funktioniert](#wie-die-erkennung-funktioniert)
-- [Konfiguration](#konfiguration)
-- [Config-Referenz](#config-referenz)
-- [Module](#module)
-- [Sicherheitskonzept](#sicherheitskonzept)
-- [Hooks](#hooks-eigene-erweiterungen)
-- [Forken & eigene Config](#forken--eigene-config)
-- [Projektstruktur](#projektstruktur)
+> ⚠️ **Status:** Under active development. The framework and all modules are implemented
+> and tested via dry-run, but **not yet verified on every real target** (PVE/PBS/Ubuntu).
+> Always do the first run with `--dry-run`.
 
 ---
 
-## Unterstützte Systeme
+## Contents
 
-Erkannt werden (jeweils die aktuelle Version, Stand 2026):
+- [Supported systems](#supported-systems)
+- [Quick start](#quick-start-one-liner)
+- [Parameters & CLI options](#parameters--cli-options)
+- [How detection works](#how-detection-works)
+- [Configuration](#configuration)
+- [Config reference](#config-reference)
+- [Modules](#modules)
+- [Safety model](#safety-model)
+- [Hooks](#hooks-your-own-extensions)
+- [Forking & your own config](#forking--your-own-config)
+- [Project structure](#project-structure)
+- [Releases & versioning](#releases--versioning)
 
-| System | Version | Profil |
+---
+
+## Supported systems
+
+Detected (each: the current version, as of 2026):
+
+| System | Version | Profile |
 |---|---|---|
 | Proxmox VE | 9.x (Debian 13 „trixie") | `proxmox-ve` |
 | Proxmox Backup Server | 4.x | `pbs` |
 | Debian | 13 „trixie" | `debian-server` / `debian-desktop` |
 | Ubuntu | 26.04 LTS | `ubuntu-server` / `ubuntu-desktop` |
-| sonstiges | — | `generic` (konservativ) |
+| anything else | — | `generic` (conservative) |
 
-> **Wichtig:** Proxmox VE/PBS melden sich in `/etc/os-release` als „Debian trixie". Das Tool
-> prüft deshalb **zuerst** auf Proxmox-Marker und fällt erst dann auf Debian/Ubuntu zurück.
-
----
-
-## Schnellstart (One-Liner)
-
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/AdminCave/first-linux-setup/main/bootstrap.sh)"
-```
-
-**Empfohlen für den ersten Lauf** — erst anschauen, was passieren würde (Argumente nach `--`):
-
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/AdminCave/first-linux-setup/main/bootstrap.sh)" -- --dry-run
-```
-
-Muss als **root** laufen (`sudo -i`). Benötigt `curl` (oder `wget`) und `tar`.
+> **Important:** Proxmox VE/PBS report themselves as „Debian trixie" in `/etc/os-release`.
+> The tool therefore checks for Proxmox markers **first** and only falls back to
+> Debian/Ubuntu afterwards.
 
 ---
 
-## Parameter & CLI-Optionen
+## Quick start (one-liner)
 
-### ENV-Variablen (dem One-Liner voranstellen)
+**Stable (recommended)** — the URL always points to the latest release:
 
-| Variable | Default | Bedeutung |
+```bash
+bash -c "$(curl -fsSL https://github.com/AdminCave/first-linux-setup/releases/latest/download/bootstrap.sh)"
+```
+
+**Recommended for the first run** — preview what would happen (arguments after `--`):
+
+```bash
+bash -c "$(curl -fsSL https://github.com/AdminCave/first-linux-setup/releases/latest/download/bootstrap.sh)" -- --dry-run
+```
+
+Must run as **root** (`sudo -i`). Requires `curl` (or `wget`) and `tar`.
+
+Pick a version: `FLS_VERSION=stable` (default), `FLS_VERSION=vX.Y.Z` (pinned), or
+`FLS_VERSION=dev` (current `main` branch).
+
+---
+
+## Parameters & CLI options
+
+### ENV variables (prepend to the one-liner)
+
+| Variable | Default | Meaning |
 |---|---|---|
-| `FLS_REPO` | `AdminCave/first-linux-setup` | Quell-Repo — für Forks auf eigenes Repo setzen |
-| `FLS_REF` | `main` | Branch oder Tag |
-| `FLS_WORKDIR` | `/opt/first-linux-setup` | Zielverzeichnis der Installation |
-| `FLS_CONFIG` | — | Pfad **oder** `http[s]`-URL zur Admin-Config |
-| `FLS_CONFIG_USER` | — | Basic-Auth-Benutzer für die Config-URL |
-| `FLS_CONFIG_PASS` | — | Basic-Auth-Passwort (wird über temporäres netrc genutzt, nicht in `ps` sichtbar) |
-| `FLS_PROFILE` | — | Profil erzwingen (statt Auto-Erkennung) |
-| `FLS_YES` | `false` | Unattended-Modus (keine Rückfragen) |
+| `FLS_REPO` | `AdminCave/first-linux-setup` | Source repo — set to your own for forks |
+| `FLS_VERSION` | `stable` | `stable` (latest release), `vX.Y.Z` (pinned), or `dev` (git branch) |
+| `FLS_REF` | — | Git branch/tag (implies `dev` mode) |
+| `FLS_WORKDIR` | `/opt/first-linux-setup` | Install target directory |
+| `FLS_CONFIG` | — | Path **or** `http[s]` URL to the admin config |
+| `FLS_CONFIG_USER` | — | Basic-Auth user for the config URL |
+| `FLS_CONFIG_PASS` | — | Basic-Auth password (used via a temporary netrc, not visible in `ps`) |
+| `FLS_PROFILE` | — | Force a profile (instead of auto-detection) |
+| `FLS_YES` | `false` | Unattended mode (no prompts) |
 
-Beispiel mit geschützter Remote-Config:
+Example with a protected remote config:
 
 ```bash
-FLS_CONFIG=https://intern.example/srv.conf \
-FLS_CONFIG_USER=deploy FLS_CONFIG_PASS='geheim' \
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/AdminCave/first-linux-setup/main/bootstrap.sh)"
+FLS_CONFIG=https://internal.example/srv.conf \
+FLS_CONFIG_USER=deploy FLS_CONFIG_PASS='secret' \
+bash -c "$(curl -fsSL https://github.com/AdminCave/first-linux-setup/releases/latest/download/bootstrap.sh)"
 ```
 
-### CLI-Optionen (`setup.sh`)
+### CLI options (`setup.sh`)
 
-| Option | Bedeutung |
+| Option | Meaning |
 |---|---|
-| `--dry-run` | Nur anzeigen, nichts ändern |
-| `-y`, `--yes` | Unattended (keine Rückfragen) |
-| `--profile <name>` | Profil erzwingen |
-| `--config <pfad\|url>` | Admin-Config laden |
-| `-h`, `--help` | Hilfe |
+| `--dry-run` | Only show what would happen, change nothing |
+| `-y`, `--yes` | Unattended (no prompts) |
+| `--profile <name>` | Force a profile |
+| `--config <path\|url>` | Load an admin config |
+| `-h`, `--help` | Help |
 
 ---
 
-## Wie die Erkennung funktioniert
+## How detection works
 
-`lib/detect.sh` ermittelt in dieser Reihenfolge:
+`lib/detect.sh` determines, in this order:
 
-1. **Proxmox VE?** — Paket `proxmox-ve`, `/etc/pve`, `pveversion`
-2. **Proxmox Backup Server?** — Paket `proxmox-backup-server`, `proxmox-backup-manager`
-3. **OS** aus `/etc/os-release` (`debian` / `ubuntu`)
-4. **Desktop?** — `graphical.target`, `$XDG_CURRENT_DESKTOP`, Display-Manager (gdm/sddm/lightdm)
-5. **Virtualisierung / Bare-Metal** — `systemd-detect-virt` (VM/Container vs. physische Hardware). Hardware-Tools (`PACKAGES_INSTALL_BAREMETAL`) werden nur auf Bare-Metal installiert.
-6. **Sensible Rollen** — Samba-AD-DC, linuxmuster.net, DNS-/NTP-/Mailserver (siehe [Sicherheitskonzept](#sicherheitskonzept))
+1. **Proxmox VE?** — package `proxmox-ve`, `/etc/pve`, `pveversion`
+2. **Proxmox Backup Server?** — package `proxmox-backup-server`, `proxmox-backup-manager`
+3. **OS** from `/etc/os-release` (`debian` / `ubuntu`)
+4. **Desktop?** — `graphical.target`, `$XDG_CURRENT_DESKTOP`, display manager (gdm/sddm/lightdm)
+5. **Virtualization / bare-metal** — `systemd-detect-virt` (VM/container vs. physical hardware).
+   Hardware tools (`PACKAGES_INSTALL_BAREMETAL`) are installed on bare-metal only.
+6. **Sensitive roles** — Samba AD DC, linuxmuster.net, DNS/NTP/mail servers (see [Safety model](#safety-model))
 
-Ergebnis ist das aktive **Profil** (`$FLS_PROFILE`), das die Default-Config bestimmt.
+The result is the active **profile** (`$FLS_PROFILE`), which selects the default config.
 
 ---
 
-## Konfiguration
+## Configuration
 
-Die Einstellungen werden **geschichtet** geladen — spätere überschreiben frühere:
+Settings are loaded in **layers** — later ones override earlier ones:
 
 ```
-profiles/defaults.conf → profiles/<profil>.conf → config.conf → FLS_CONFIG (Datei/URL) → ENV
+profiles/defaults.conf → profiles/<profile>.conf → config.conf → FLS_CONFIG (file/URL) → ENV
 ```
 
-- **`profiles/defaults.conf`** — dokumentierte Standardwerte (im Fork möglichst nicht ändern)
-- **`profiles/<profil>.conf`** — profil-spezifische Abweichungen (z. B. chrony auf Proxmox)
-- **`config.conf`** — **deine** Admin-Config (hier anpassen)
-- **`FLS_CONFIG`** — zentrale Config per Datei/URL (praktisch für viele Hosts)
+- **`profiles/defaults.conf`** — documented defaults (avoid changing this in a fork)
+- **`profiles/<profile>.conf`** — profile-specific overrides (e.g. chrony on Proxmox)
+- **`config.conf`** — **your** admin config (edit this)
+- **`FLS_CONFIG`** — a central config via file/URL (handy for many hosts)
 
 ---
 
-## Config-Referenz
+## Config reference
 
-Alle Schlüssel mit ihren Defaults (aus `profiles/defaults.conf`):
+All keys with their defaults (from `profiles/defaults.conf`):
 
 ```bash
-# System / Updates
+# System / updates
 RUN_UPDATE=true            # apt update
 RUN_UPGRADE=true           # apt dist-upgrade + autoremove
 TIMEZONE="Europe/Berlin"
 
-# Locale / Tastatur   (MANAGE: auto|always|never)
+# Locale / keyboard   (MANAGE: auto|always|never)
 LOCALE_MANAGE="auto"
 LOCALE="de_DE.UTF-8"
 KEYMAP="de"
 
-# Zeit / NTP
-NTP_MANAGE="auto"          # auto = nicht anfassen, wenn schon eingerichtet (DC etc.)
-NTP_BACKEND="timesyncd"    # timesyncd|chrony  (Proxmox-Profil nutzt chrony)
+# Time / NTP
+NTP_MANAGE="auto"          # auto = leave alone if already set up (DC etc.)
+NTP_BACKEND="timesyncd"    # timesyncd|chrony  (the Proxmox profile uses chrony)
 NTP_SERVERS=()
 
-# bashrc  (Template: assets/bashrc.template)
+# Guest agent (VMs only)
+GUEST_AGENT_INSTALL="auto" # auto = by VM type (kvm/qemu -> qemu-guest-agent); true|false
+
+# bashrc  (template: assets/bashrc.template)
 DEPLOY_BASHRC=true
-BASHRC_ALL_USERS=true      # root + /etc/skel + alle Login-User
+BASHRC_ALL_USERS=true      # root + /etc/skel + all login users
 BASHRC_BACKUP=true
 
-# fastfetch  (Vorlage: assets/fastfetch.jsonc)
+# fastfetch  (template: assets/fastfetch.jsonc)
 INSTALL_FASTFETCH=true
 
-# Gast-Agent (nur in VMs)
-GUEST_AGENT_INSTALL="auto"    # auto = nach VM-Typ (kvm/qemu -> qemu-guest-agent); true|false
-
-# Pakete / Dateien / Repos
-PACKAGES_INSTALL=()                                               # überall
-PACKAGES_INSTALL_BAREMETAL=(lshw lm-sensors smartmontools gdisk)  # nur physische HW
+# Packages / files / repos
+PACKAGES_INSTALL=()                                              # everywhere
+PACKAGES_INSTALL_BAREMETAL=(lshw lm-sensors smartmontools gdisk) # physical HW only
 PACKAGES_REMOVE=()
-FILES_REMOVE=()            # z.B. /etc/motd
-FILES_DEPLOY=()            # "quelle:ziel:perms"
+FILES_REMOVE=()            # e.g. /etc/motd
+FILES_DEPLOY=()            # "source:target:perms"
 APT_REPOS=()              # "name|deb_line|key_url|format(list|sources)"
 SERVICES_ENABLE=()
 
 # SSH
 SSH_KEYS_TARGET_USER="root"
-SSH_KEYS_ADD=()            # ganze Keys
-SSH_KEYS_REMOVE=()         # Patterns
-SSH_KEYS_KEEP_ONLY=()      # falls gesetzt: ALLE anderen Keys entfernen!
-SSH_HARDEN=true            # nur Key-Login (mit Aussperr-Failsafe)
+SSH_KEYS_ADD=()            # full keys
+SSH_KEYS_REMOVE=()         # patterns
+SSH_KEYS_KEEP_ONLY=()      # if set: remove ALL other keys!
+SSH_HARDEN=true            # key-only login (with lockout failsafe)
 SSH_PORT=22
 
-# Passwörter
+# Passwords
 PROMPT_ROOT_PASSWORD=true
 ADMIN_USERS_PROMPT=(master admin administrator sysadmin sysop linux-admin linuxadmin operator superadmin)
 
@@ -185,107 +194,122 @@ FAIL2BAN_SSH_MAXRETRY=10
 FAIL2BAN_SSH_BANTIME=3600
 FAIL2BAN_SSH_FINDTIME=600
 
-# Proxmox VE / PBS — Repos (deb822)
+# Proxmox VE / PBS — repos (deb822)
 PVE_DISABLE_ENTERPRISE=true
 PVE_SWITCH_NOSUB_REPO=true
 PVE_DISABLE_CEPH_ENTERPRISE=true
 PVE_SWITCH_CEPH_NOSUB=true
-PVE_REMOVE_SUB_NAG=false   # optional; patcht proxmoxlib.js (update-flüchtig)
+PVE_REMOVE_SUB_NAG=false   # optional; patches proxmoxlib.js (reverted by updates)
 PBS_DISABLE_ENTERPRISE=true
 PBS_SWITCH_NOSUB_REPO=true
 
-# Proxmox — Tuning
+# Proxmox — tuning
 SWAPPINESS=10
-ZFS_ARC_PROMPT=true        # min/max interaktiv erfragen
-ZFS_ARC_MIN=""             # z.B. "2G" (leer = nicht setzen)
-ZFS_ARC_MAX=""             # z.B. "8G"
+ZFS_ARC_PROMPT=true        # ask for min/max interactively
+ZFS_ARC_MIN=""             # e.g. "2G" (empty = do not set)
+ZFS_ARC_MAX=""             # e.g. "8G"
 ```
 
 ---
 
-## Module
+## Modules
 
-Ausgeführt in dieser Reihenfolge; jedes ist **idempotent** und per Config schaltbar:
+Run in this order; each is **idempotent** and toggled via config:
 
-| # | Modul | Was es tut |
+| # | Module | What it does |
 |---|---|---|
 | 10 | `update` | `apt update`, `dist-upgrade`, `autoremove` |
-| 20 | `locale-keyboard` | Timezone, Locale, Tastaturlayout |
-| 25 | `time-ntp` | Zeit-Sync (timesyncd/chrony); schützt bestehende Einrichtung |
-| 30 | `packages` | Pakete install/remove (+ Bare-Metal-only-Gruppe), Dateien, APT-Repos, Dienste |
-| 35 | `guest-agent` | in VMs: Gast-Agent (Proxmox/KVM → `qemu-guest-agent`) |
-| 40 | `bashrc` | bashrc-Template → root + /etc/skel + alle Login-User |
-| 45 | `fastfetch` | fastfetch installieren + Config ausrollen |
-| 50 | `ssh-keys` | `authorized_keys` pflegen (add/remove/keep-only) |
-| 55 | `ssh-harden` | nur Key-Login, `sshd -t`-Check, **Aussperr-Failsafe** |
-| 60 | `passwords` | root- & Admin-User-Passwörter (Rückfrage pro User) |
-| 70 | `fail2ban` | fail2ban + SSH-Jail |
-| 80 | `proxmox-repos` | Enterprise→No-Subscription (PVE, Ceph, PBS) |
-| 85 | `proxmox-tuning` | `vm.swappiness`, ZFS-ARC min/max (+ `update-initramfs`) |
+| 20 | `locale-keyboard` | timezone, locale, keyboard layout |
+| 25 | `time-ntp` | time sync (timesyncd/chrony); protects an existing setup |
+| 30 | `packages` | install/remove packages (+ bare-metal-only group), files, APT repos, services |
+| 35 | `guest-agent` | in VMs: guest agent (Proxmox/KVM → `qemu-guest-agent`) |
+| 40 | `bashrc` | bashrc template → root + /etc/skel + all login users |
+| 45 | `fastfetch` | install fastfetch + deploy config |
+| 50 | `ssh-keys` | manage `authorized_keys` (add/remove/keep-only) |
+| 55 | `ssh-harden` | key-only login, `sshd -t` check, **lockout failsafe** |
+| 60 | `passwords` | root & admin-user passwords (prompt per user) |
+| 70 | `fail2ban` | fail2ban + SSH jail |
+| 80 | `proxmox-repos` | enterprise → no-subscription (PVE, Ceph, PBS) |
+| 85 | `proxmox-tuning` | `vm.swappiness`, ZFS ARC min/max (+ `update-initramfs`) |
 
-Die Proxmox-Module (80/85) laufen nur auf `proxmox-ve`/`pbs`-Profilen.
-
----
-
-## Sicherheitskonzept
-
-- **Aussperr-Schutz:** SSH-Härtung deaktiviert Passwort-Login **nur**, wenn für den Ziel-User
-  gültige Keys vorhanden sind. Die sshd-Config wird vor dem Reload mit `sshd -t` validiert und
-  bei Fehler automatisch zurückgerollt.
-- **Absichtliche Konfiguration wird nicht überschrieben:** Erkennt das Tool eine sensible Rolle
-  (Samba-AD-**DC**, **linuxmuster.net**, DNS-/NTP-/Mailserver) oder eine bereits vorhandene,
-  nicht vom Tool stammende NTP-Config, überspringt es das betroffene Modul (`*_MANAGE=auto`).
-  Erzwingen mit `*_MANAGE=always`.
-- **Backups:** Vor jeder Änderung an einer bestehenden Datei wird `datei.bak.<zeitstempel>` angelegt.
-- **Nachvollziehbarkeit:** Alles wird nach `/var/log/admincave-setup.log` protokolliert; am Ende
-  gibt es eine Zusammenfassung mit Warn-/Fehlerzahl.
-- **Dry-Run:** `--dry-run` zeigt jede Aktion, ohne etwas zu ändern.
+The Proxmox modules (80/85) only run on `proxmox-ve`/`pbs` profiles.
 
 ---
 
-## Hooks (eigene Erweiterungen)
+## Safety model
 
-Eigene Skripte werden automatisch mit ausgeführt:
-
-- `hooks/pre.d/*.sh` — **vor** allen Modulen
-- `hooks/post.d/*.sh` — **nach** allen Modulen
-
-Reihenfolge = alphabetisch (Nummern-Prefix, z. B. `10-foo.sh`). Es liegen Beispiele als
-`*.sh.example` bereit — zum Aktivieren nach `*.sh` kopieren.
-
----
-
-## Forken & eigene Config
-
-1. Repo forken.
-2. `config.conf` anpassen (SSH-Keys, Pakete, Optionen …).
-3. One-Liner mit `FLS_REPO=DeinName/first-linux-setup` aufrufen — oder den Raw-Link deines Forks nutzen.
-
-Alternativ die Config **nicht** ins Repo legen, sondern zentral per `FLS_CONFIG=https://…`
-(optional mit Basic-Auth) für viele Hosts bereitstellen.
+- **Lockout protection:** SSH hardening disables password login **only** when valid keys
+  exist for the target user. The sshd config is validated with `sshd -t` before reload and
+  rolled back automatically on error.
+- **Intentional config is never clobbered:** if the tool detects a sensitive role
+  (Samba AD **DC**, **linuxmuster.net**, DNS/NTP/mail server) or an existing, non-tool-managed
+  NTP config, it skips the affected module (`*_MANAGE=auto`). Force with `*_MANAGE=always`.
+- **Backups:** before changing an existing file, `file.bak.<timestamp>` is created.
+- **Traceability:** everything is logged to `/var/log/admincave-setup.log`; a summary with
+  warning/error counts is printed at the end.
+- **Dry-run:** `--dry-run` shows every action without changing anything.
 
 ---
 
-## Projektstruktur
+## Hooks (your own extensions)
+
+Your own scripts are executed automatically:
+
+- `hooks/pre.d/*.sh` — **before** all modules
+- `hooks/post.d/*.sh` — **after** all modules
+
+Order = alphabetical (number prefix, e.g. `10-foo.sh`). Examples are provided as
+`*.sh.example` — copy to `*.sh` to activate.
+
+---
+
+## Forking & your own config
+
+1. Fork the repo.
+2. Adjust `config.conf` (SSH keys, packages, options …).
+3. Run the one-liner with `FLS_REPO=YourName/first-linux-setup` — or use your fork's raw link.
+
+Alternatively, keep the config **out** of the repo and serve it centrally via
+`FLS_CONFIG=https://…` (optionally with Basic-Auth) for many hosts.
+
+---
+
+## Project structure
 
 ```
-bootstrap.sh            One-Liner-Loader (lädt Repo, startet setup.sh)
-setup.sh                Orchestrator: detect → config → hooks → module → summary
+bootstrap.sh            One-liner loader (downloads toolkit, runs setup.sh)
+setup.sh                Orchestrator: detect → config → hooks → modules → summary
 lib/
-  detect.sh             OS-/Profil-/Rollen-Erkennung
-  config.sh             Config-Schichten laden (inkl. URL + netrc-Auth)
-  ui.sh                 Ausgabe (Farben nur bei TTY) + Rückfragen
-  log.sh                Logging + Zusammenfassung
-  util.sh               run/dry-run, Backups, Datei-Helfer, Hooks
-modules/                je eine Aufgabe (10-… bis 85-…)
-profiles/               defaults + ein .conf pro Profil
+  detect.sh             OS / profile / role detection
+  config.sh             Load config layers (incl. URL + netrc auth)
+  ui.sh                 Output (colors only on TTY) + prompts
+  log.sh                Logging + summary
+  util.sh               run/dry-run, backups, file helpers, hooks
+modules/                one task each (10-… to 85-…)
+profiles/               defaults + one .conf per profile
 assets/                 bashrc.template · fastfetch.jsonc
-hooks/pre.d | post.d/   eigene *.sh
-config.conf             deine Admin-Config
+hooks/pre.d | post.d/   your own *.sh
+config.conf             your admin config
 ```
 
 ---
 
-## Lizenz
+## Releases & versioning
 
-Noch festzulegen.
+- Releases are cut from **SemVer tags `vX.Y.Z`**.
+- `.github/workflows/release.yml` packages the runtime files into
+  `first-linux-setup.tar.gz` + `SHA256SUMS` and uploads them together with `bootstrap.sh`
+  as **release assets**, marking the release as `latest`.
+- **Always-works stable URL:**
+  `https://github.com/AdminCave/first-linux-setup/releases/latest/download/bootstrap.sh`
+  — this `bootstrap.sh` pulls the toolkit tarball from the **same** latest release, so
+  bootstrap and toolkit are always version-consistent.
+- **Pin a version:** `FLS_VERSION=vX.Y.Z`. **Dev/bleeding edge:** `FLS_VERSION=dev`.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the version history.
+
+---
+
+## License
+
+To be determined.
