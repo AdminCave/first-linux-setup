@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-01
+
 ### Added
 - One-liner bootstrap + `setup.sh` orchestrator (detect → config → hooks → modules → summary).
 - Environment detection: Proxmox VE/PBS before Debian/Ubuntu; desktop / virt / container /
@@ -31,4 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Renamed the internal dry-run wrapper `run` → `fls_run` (avoids a name collision with the
   bats `run` builtin and is less collision-prone in general).
 
-[Unreleased]: https://github.com/AdminCave/first-linux-setup/commits/main
+### Fixed
+- `setup.sh` exited non-zero on real (non-dry) runs: `log_summary` lacked a trailing
+  newline (tripping `set -e` at the summary `read`) and the final `[[ … ]] &&` line became
+  the script's exit status. Both fixed and guarded by integration tests.
+
+[Unreleased]: https://github.com/AdminCave/first-linux-setup/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/AdminCave/first-linux-setup/releases/tag/v0.1.0
