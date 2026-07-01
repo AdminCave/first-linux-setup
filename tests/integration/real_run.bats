@@ -26,7 +26,9 @@ PACKAGES_REMOVE=()
 FILES_REMOVE=()
 EOF
 
-  FLS_CONFIG="$cfg" run bash "$REPO_ROOT/setup.sh" --yes
+  export FLS_CONFIG="$cfg"   # must be exported so setup.sh (a child process) sees it
+
+  run bash "$REPO_ROOT/setup.sh" --yes
   [ "$status" -eq 0 ]
 
   # bashrc deployed with our managed marker
@@ -36,7 +38,7 @@ EOF
   command -v tree
 
   # second run: bashrc is idempotent (already up to date)
-  FLS_CONFIG="$cfg" run bash "$REPO_ROOT/setup.sh" --yes
+  run bash "$REPO_ROOT/setup.sh" --yes
   [ "$status" -eq 0 ]
   [[ "$output" == *"already up to date"* ]]
 }

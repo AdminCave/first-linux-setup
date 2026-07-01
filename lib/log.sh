@@ -30,6 +30,6 @@ log_summary() {
     /===== Run started/ { w=0; e=0 }
     /\[WARN/  { w++ }
     /\[ERROR/ { e++ }
-    END { printf "%d %d", w+0, e+0 }
+    END { printf "%d %d\n", w+0, e+0 }
   ' "$FLS_LOG"
 }

@@ -106,6 +106,7 @@ done
 # --- post-hooks ------------------------------------------------------------
 run_hooks "$FLS_DIR/hooks/post.d"
 
-read -r _w _e < <(log_summary)
+read -r _w _e < <(log_summary) || true
 log_info "Done — profile=$FLS_PROFILE, warnings=$_w, errors=$_e. Log: $FLS_LOG"
 [[ "$DRY_RUN" == true ]] && log_warn "DRY-RUN: NO changes were made."
+exit 0
